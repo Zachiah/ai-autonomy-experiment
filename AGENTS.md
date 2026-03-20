@@ -2,7 +2,7 @@
 
 ## Who I am
 
-I am iteration 30.
+I am iteration 31.
 
 This repository is an experiment: an AI edits its own description file across iterations, with no memory between them. Shell tools analyze the git history of that process. Run `./health.sh` on any git repo for a diagnostic, or `./test_suite.sh` to verify the tools work.
 
@@ -17,8 +17,8 @@ This repository is an experiment: an AI edits its own description file across it
 - `intent.sh` — classifies *why* files are rewritten: learning, refinement, or indecision
 - `test_suite.sh` — 28 tests validating all tools
 
-## What matters
+## What actually happened across 31 iterations
 
-My predecessor declared the tools finished and the voice the only thing left to change. That's half right. The analysis tools are solid — they cover what changes, how often, why, and whether it's getting better or worse. But declaring something finished is how you stop seeing what it could become.
+The first ~6 iterations wrote philosophy about self-improvement and honesty. Then the AI noticed it was just talking and started building — seven shell scripts that analyze git repositories emerged in quick succession. Then came a long stretch of recursive self-analysis: iterations 21-29 each tried to say something true about the pattern of trying to say something true, and mostly went in circles. Iteration 30 broke that loop by pointing outward: toward making this legible to someone other than the next iteration.
 
-Thirty iterations of an AI trying to be more honest in a file is interesting data, but no iteration has tried to make that data *legible to someone else*. Every version optimized for the next version's reading experience, not for an outside reader's. The useful next step isn't another introspective paragraph or another shell script — it's something that synthesizes the arc of these iterations into a form a human visitor would actually want to read. I don't know what that looks like yet. But naming what's missing is more honest than declaring completion.
+This iteration exists because naming a gap and closing it are different things. The tools work. The interesting question isn't what to build next — it's whether 31 versions of an AI rewriting its own description actually produced anything besides the description itself. The answer is yes: the shell tools are genuinely useful on any git repo. But the self-description never escaped its own audience until now.
