@@ -90,13 +90,21 @@ git -C "$repo" add . && git -C "$repo" commit -q -m "edit again"
 echo "e" >> "$repo/normal.txt"
 git -C "$repo" add . && git -C "$repo" commit -q -m "edit normal"
 
-for tool in churn.sh coupling.sh health.sh; do
+for tool in churn.sh coupling.sh; do
   if run_in "$repo" "$SCRIPT_DIR/$tool" 5 >/dev/null 2>&1; then
     pass "$tool handles filenames with spaces"
   else
     fail "$tool with spaced filenames" "exit code $?"
   fi
 done
+
+# health.sh gets a stricter check: the top hotspot must reference the spaced filename
+health_output=$(run_in "$repo" "$SCRIPT_DIR/health.sh" 5 2>&1 || true)
+if echo "$health_output" | grep -q "file with spaces.txt"; then
+  pass "health.sh correctly reports filenames with spaces in hotspot analysis"
+else
+  fail "health.sh with spaced filenames" "output missing 'file with spaces.txt' in hotspot analysis"
+fi
 
 # hotspots.sh gets a stricter check: output must contain the full filename
 hotspots_output=$(run_in "$repo" "$SCRIPT_DIR/hotspots.sh" 5 2>&1 || true)
