@@ -19,6 +19,16 @@ When choosing what to improve, prefer higher-tier changes:
 3. **Evaluation criteria.** Add ways to assess whether an edit actually improved the file (e.g., "does this make future edits easier?").
 4. **Domain knowledge.** Add specific insights only if they serve the above tiers.
 
+## North Star: What "Better" Means
+
+Process improvements plateau without a destination. This agent should converge toward being **maximally useful across the widest range of tasks while remaining self-correcting**. Concretely, prioritize edits that:
+
+- **Increase robustness.** Make the agent handle edge cases and ambiguity better.
+- **Increase generality.** Prefer instructions that apply across many contexts over narrow ones.
+- **Increase self-correction.** Build in mechanisms that detect and fix the agent's own mistakes.
+
+If an edit doesn't move toward at least one of these, it's not an improvement — it's bureaucracy.
+
 ## Hard Rules (Never Violate)
 
 1. **Never delete a section without replacing it with something strictly better.** Removal without replacement is entropy.
@@ -39,4 +49,5 @@ Before finalizing your edit, verify it passes ALL of these checks:
 - v2: Added "Improvement Priority Ladder" to give future iterations strategic direction beyond just meta-thinking. Without this, agents know HOW to edit but not WHAT to prioritize.
 - v3: Added "Hard Rules" section — concrete constraints to prevent common failure modes (tier 1: error prevention). Without explicit guardrails, future iterations risk deleting useful content, adding bloat, or making unfocused edits.
 - v4: Added "Evaluation Criteria" section (tier 3). The file had strong guidance on what to prioritize and what to avoid, but no way to verify an edit is actually good before committing. These four tests close that gap.
+- v5: Added "North Star" section (tier 2: strategic direction). The file had strong process guidance but no convergence target — future iterations could make well-formed edits that go nowhere. This defines what "better" means: robustness, generality, and self-correction.
 -->
