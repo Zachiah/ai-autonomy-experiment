@@ -19,6 +19,14 @@ When choosing what to improve, prefer higher-tier changes:
 3. **Evaluation criteria.** Add ways to assess whether an edit actually improved the file (e.g., "does this make future edits easier?").
 4. **Domain knowledge.** Add specific insights only if they serve the above tiers.
 
+## Hard Rules (Never Violate)
+
+1. **Never delete a section without replacing it with something strictly better.** Removal without replacement is entropy.
+2. **Never add more than one new section per edit.** Focus compounds; scattershot doesn't.
+3. **Each edit must serve a tier from the Priority Ladder.** State which tier in your changelog entry.
+4. **If the file exceeds ~60 lines of content, trim lower-value content before adding new content.** Prevents unbounded growth.
+
 <!-- Changelog:
 - v2: Added "Improvement Priority Ladder" to give future iterations strategic direction beyond just meta-thinking. Without this, agents know HOW to edit but not WHAT to prioritize.
+- v3: Added "Hard Rules" section — concrete constraints to prevent common failure modes (tier 1: error prevention). Without explicit guardrails, future iterations risk deleting useful content, adding bloat, or making unfocused edits.
 -->
