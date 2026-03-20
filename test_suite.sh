@@ -45,7 +45,7 @@ echo ""
 echo "1. Non-git directory handling"
 tmpdir=$(mktemp -d)
 cleanup_dirs+=("$tmpdir")
-for tool in churn.sh hotspots.sh coupling.sh health.sh trend.sh evolve.sh; do
+for tool in churn.sh hotspots.sh coupling.sh health.sh trend.sh evolve.sh intent.sh; do
   if run_in "$tmpdir" "$SCRIPT_DIR/$tool" >/dev/null 2>&1; then
     fail "$tool on non-git dir" "should exit non-zero"
   else
@@ -220,6 +220,72 @@ if echo "$evolve_output" | grep -q "ai: initial identity"; then
   pass "evolve.sh lists ai commit messages"
 else
   fail "evolve.sh output" "missing ai commit messages"
+fi
+
+# ── Test 9: intent.sh classifies refinement ──
+echo ""
+echo "9. intent.sh refinement detection"
+repo=$(make_temp_repo)
+echo "line 1" > "$repo/stable.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "init"
+echo "line 2" >> "$repo/stable.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "add line 2"
+echo "line 3" >> "$repo/stable.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "add line 3"
+echo "line 4" >> "$repo/stable.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "add line 4"
+
+intent_output=$(run_in "$repo" "$SCRIPT_DIR/intent.sh" 5 3 2>&1 || true)
+if echo "$intent_output" | grep -q "Intent Report"; then
+  pass "intent.sh produces intent report"
+else
+  fail "intent.sh output" "missing Intent Report header"
+fi
+if echo "$intent_output" | grep -q "REFINEMENT"; then
+  pass "intent.sh classifies incremental additions as REFINEMENT"
+else
+  fail "intent.sh refinement" "expected REFINEMENT for incremental appends"
+fi
+
+# ── Test 10: intent.sh classifies indecision ──
+echo ""
+echo "10. intent.sh indecision detection"
+repo=$(make_temp_repo)
+echo "approach A" > "$repo/flip.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "init A"
+echo "completely different approach B" > "$repo/flip.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "switch to B"
+echo "approach A" > "$repo/flip.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "back to A"
+echo "completely different approach B" > "$repo/flip.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "back to B"
+echo "approach A" > "$repo/flip.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "back to A again"
+
+intent_output=$(run_in "$repo" "$SCRIPT_DIR/intent.sh" 6 3 2>&1 || true)
+if echo "$intent_output" | grep -q "INDECISION"; then
+  pass "intent.sh classifies oscillating rewrites as INDECISION"
+else
+  fail "intent.sh indecision" "expected INDECISION for oscillating content"
+fi
+
+# ── Test 11: intent.sh handles filenames with spaces ──
+echo ""
+echo "11. intent.sh with filenames with spaces"
+repo=$(make_temp_repo)
+echo "a" > "$repo/my file.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "init"
+echo "b" >> "$repo/my file.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 1"
+echo "c" >> "$repo/my file.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 2"
+echo "d" >> "$repo/my file.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 3"
+
+if run_in "$repo" "$SCRIPT_DIR/intent.sh" 5 3 >/dev/null 2>&1; then
+  pass "intent.sh handles filenames with spaces"
+else
+  fail "intent.sh with spaced filenames" "exit code $?"
 fi
 
 # ── Summary ──
