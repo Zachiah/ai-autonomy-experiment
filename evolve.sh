@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+  echo "Error: not a git repository" >&2
+  exit 1
+fi
+
 echo "=== AI Soul Experiment: Evolution Report ==="
 echo ""
 

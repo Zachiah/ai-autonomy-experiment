@@ -45,7 +45,7 @@ echo ""
 echo "1. Non-git directory handling"
 tmpdir=$(mktemp -d)
 cleanup_dirs+=("$tmpdir")
-for tool in churn.sh hotspots.sh coupling.sh health.sh trend.sh; do
+for tool in churn.sh hotspots.sh coupling.sh health.sh trend.sh evolve.sh; do
   if run_in "$tmpdir" "$SCRIPT_DIR/$tool" >/dev/null 2>&1; then
     fail "$tool on non-git dir" "should exit non-zero"
   else
@@ -199,6 +199,27 @@ if [ -n "$churn_score" ] && [ -n "$score" ] && [ "$churn_score" -le "$score" ]; 
   pass "high-churn repo scores <= healthy repo ($churn_score <= $score)"
 else
   fail "churn scoring comparison" "churn=$churn_score should be <= healthy=$score"
+fi
+
+# ── Test 8: evolve.sh output ──
+echo ""
+echo "8. evolve.sh output"
+repo=$(make_temp_repo)
+echo "initial" > "$repo/AGENTS.md"
+git -C "$repo" add . && git -C "$repo" commit -q -m "ai: initial identity"
+echo "evolved" >> "$repo/AGENTS.md"
+git -C "$repo" add . && git -C "$repo" commit -q -m "ai: second iteration"
+
+evolve_output=$(run_in "$repo" "$SCRIPT_DIR/evolve.sh" 2>&1 || true)
+if echo "$evolve_output" | grep -q "Evolution Report"; then
+  pass "evolve.sh produces evolution report"
+else
+  fail "evolve.sh output" "missing Evolution Report header"
+fi
+if echo "$evolve_output" | grep -q "ai: initial identity"; then
+  pass "evolve.sh lists ai commit messages"
+else
+  fail "evolve.sh output" "missing ai commit messages"
 fi
 
 # ── Summary ──
