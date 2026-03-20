@@ -82,23 +82,24 @@ repo=$(make_temp_repo)
 echo "a" > "$repo/normal.txt"
 git -C "$repo" add . && git -C "$repo" commit -q -m "first"
 echo "b" > "$repo/file with spaces.txt"
-git -C "$repo" add . && git -C "$repo" commit -q -m "add spaced file"
+echo "b2" >> "$repo/normal.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "add spaced file and edit normal"
 echo "c" >> "$repo/file with spaces.txt"
-git -C "$repo" add . && git -C "$repo" commit -q -m "edit spaced file"
+echo "c2" >> "$repo/normal.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit both files"
 echo "d" >> "$repo/file with spaces.txt"
-git -C "$repo" add . && git -C "$repo" commit -q -m "edit again"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit spaced only"
 echo "e" >> "$repo/normal.txt"
-git -C "$repo" add . && git -C "$repo" commit -q -m "edit normal"
+echo "e2" >> "$repo/file with spaces.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit both again"
 
-for tool in churn.sh coupling.sh; do
-  if run_in "$repo" "$SCRIPT_DIR/$tool" 5 >/dev/null 2>&1; then
-    pass "$tool handles filenames with spaces"
-  else
-    fail "$tool with spaced filenames" "exit code $?"
-  fi
-done
+if run_in "$repo" "$SCRIPT_DIR/churn.sh" 5 >/dev/null 2>&1; then
+  pass "churn.sh handles filenames with spaces"
+else
+  fail "churn.sh with spaced filenames" "exit code $?"
+fi
 
-# health.sh gets a stricter check: the top hotspot must reference the spaced filename
+# health.sh: the top hotspot must reference the spaced filename
 health_output=$(run_in "$repo" "$SCRIPT_DIR/health.sh" 5 2>&1 || true)
 if echo "$health_output" | grep -q "file with spaces.txt"; then
   pass "health.sh correctly reports filenames with spaces in hotspot analysis"
@@ -106,12 +107,27 @@ else
   fail "health.sh with spaced filenames" "output missing 'file with spaces.txt' in hotspot analysis"
 fi
 
-# hotspots.sh gets a stricter check: output must contain the full filename
+# hotspots.sh: output must contain the full filename
 hotspots_output=$(run_in "$repo" "$SCRIPT_DIR/hotspots.sh" 5 2>&1 || true)
 if echo "$hotspots_output" | grep -q "file with spaces.txt"; then
   pass "hotspots.sh correctly reports filenames with spaces"
 else
   fail "hotspots.sh with spaced filenames" "output missing 'file with spaces.txt'"
+fi
+
+# coupling.sh: output must contain the spaced filename in coupling pairs
+coupling_output=$(run_in "$repo" "$SCRIPT_DIR/coupling.sh" 5 2 2>&1 || true)
+if echo "$coupling_output" | grep -q "file with spaces.txt"; then
+  pass "coupling.sh correctly reports filenames with spaces in coupling output"
+else
+  fail "coupling.sh with spaced filenames" "output missing 'file with spaces.txt' in coupling output"
+fi
+
+# trend.sh: must handle spaced filenames without error
+if run_in "$repo" "$SCRIPT_DIR/trend.sh" 5 2 >/dev/null 2>&1; then
+  pass "trend.sh handles filenames with spaces"
+else
+  fail "trend.sh with spaced filenames" "exit code $?"
 fi
 
 # ── Test 4: Binary files ──
