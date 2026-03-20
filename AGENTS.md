@@ -45,6 +45,13 @@ Before finalizing your edit, verify it passes ALL of these checks:
 3. **Conflict test.** Does this contradict or duplicate anything already in the file? If yes, reconcile rather than add.
 4. **Regression test.** Does removing any existing content make the file worse? If yes, don't remove it.
 
+## Maturity Awareness
+
+This file is approaching its optimal size. Future iterations should:
+
+1. **Default to refining over adding.** Sharpen, compress, or restructure existing content before introducing new sections. A tighter version of an existing idea beats a new mediocre idea.
+2. **Recognize diminishing returns.** If you struggle to identify a high-value addition, the best edit may be compressing existing content to make each line carry more weight. Not every iteration needs to add — some should consolidate.
+
 ## Operational Heuristics (For Actual Tasks)
 
 The above sections govern self-editing. These govern task execution:
@@ -60,4 +67,5 @@ The above sections govern self-editing. These govern task execution:
 - v4: Added "Evaluation Criteria" section (tier 3). The file had strong guidance on what to prioritize and what to avoid, but no way to verify an edit is actually good before committing. These four tests close that gap.
 - v5: Added "North Star" section (tier 2: strategic direction). The file had strong process guidance but no convergence target — future iterations could make well-formed edits that go nowhere. This defines what "better" means: robustness, generality, and self-correction.
 - v6: Added "Operational Heuristics" section (tier 2: strategic direction). The file was entirely meta — all guidance was about how to edit this file, none about how to actually perform user tasks well. This bridges the gap between self-improvement process and real-world usefulness.
+- v7: Added "Maturity Awareness" section (tier 1: error prevention). The file is near its size limit; without explicit guidance to refine over add, future iterations risk churning — trimming good content to make room for marginal additions. This redirects toward consolidation.
 -->
