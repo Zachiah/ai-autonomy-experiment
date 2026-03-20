@@ -45,7 +45,7 @@ echo ""
 echo "1. Non-git directory handling"
 tmpdir=$(mktemp -d)
 cleanup_dirs+=("$tmpdir")
-for tool in churn.sh hotspots.sh coupling.sh health.sh trend.sh evolve.sh intent.sh; do
+for tool in churn.sh hotspots.sh coupling.sh health.sh trend.sh evolve.sh intent.sh authors.sh; do
   if run_in "$tmpdir" "$SCRIPT_DIR/$tool" >/dev/null 2>&1; then
     fail "$tool on non-git dir" "should exit non-zero"
   else
@@ -344,6 +344,96 @@ if [ -n "$indecisive_score" ] && [ -n "$learning_score" ] && [ "$indecisive_scor
   pass "indecisive repo scores <= learning repo ($indecisive_score <= $learning_score)"
 else
   fail "intent-aware scoring" "indecisive=$indecisive_score should be <= learning=$learning_score"
+fi
+
+# ── Test 14: authors.sh basic output ──
+echo ""
+echo "14. authors.sh basic output"
+repo=$(make_temp_repo)
+echo "init" > "$repo/code.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "init"
+echo "edit" >> "$repo/code.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 1"
+echo "more" >> "$repo/code.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 2"
+
+authors_output=$(run_in "$repo" "$SCRIPT_DIR/authors.sh" 5 2>&1 || true)
+if echo "$authors_output" | grep -q "Ownership Report"; then
+  pass "authors.sh produces ownership report"
+else
+  fail "authors.sh output" "missing Ownership Report header"
+fi
+if echo "$authors_output" | grep -q "Test"; then
+  pass "authors.sh shows author name"
+else
+  fail "authors.sh output" "missing author name in output"
+fi
+
+# ── Test 15: authors.sh multi-author detection ──
+echo ""
+echo "15. authors.sh multi-author detection"
+repo=$(make_temp_repo)
+echo "init" > "$repo/shared.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "init"
+
+git -C "$repo" config user.name "Alice"
+echo "alice edit" >> "$repo/shared.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "alice change"
+
+git -C "$repo" config user.name "Bob"
+echo "bob edit" >> "$repo/shared.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "bob change"
+
+authors_output=$(run_in "$repo" "$SCRIPT_DIR/authors.sh" 5 2>&1 || true)
+if echo "$authors_output" | grep -q "Alice" && echo "$authors_output" | grep -q "Bob"; then
+  pass "authors.sh detects multiple authors"
+else
+  fail "authors.sh multi-author" "expected both Alice and Bob in output"
+fi
+if echo "$authors_output" | grep -q "Total authors: 3"; then
+  pass "authors.sh counts all authors correctly"
+else
+  fail "authors.sh author count" "expected 3 authors (Test, Alice, Bob)"
+fi
+
+# ── Test 16: authors.sh with filenames with spaces ──
+echo ""
+echo "16. authors.sh with filenames with spaces"
+repo=$(make_temp_repo)
+echo "a" > "$repo/my file.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "init"
+echo "b" >> "$repo/my file.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 1"
+echo "c" >> "$repo/my file.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 2"
+
+if run_in "$repo" "$SCRIPT_DIR/authors.sh" 5 >/dev/null 2>&1; then
+  pass "authors.sh handles filenames with spaces"
+else
+  fail "authors.sh with spaced filenames" "exit code $?"
+fi
+
+authors_output=$(run_in "$repo" "$SCRIPT_DIR/authors.sh" 5 2>&1 || true)
+if echo "$authors_output" | grep -q "my file.txt"; then
+  pass "authors.sh correctly reports filenames with spaces"
+else
+  fail "authors.sh spaced filenames" "output missing 'my file.txt'"
+fi
+
+# ── Test 17: authors.sh solo project detection ──
+echo ""
+echo "17. authors.sh solo project detection"
+repo=$(make_temp_repo)
+echo "init" > "$repo/code.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "init"
+echo "edit" >> "$repo/code.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit"
+
+authors_output=$(run_in "$repo" "$SCRIPT_DIR/authors.sh" 5 2>&1 || true)
+if echo "$authors_output" | grep -q "Solo project"; then
+  pass "authors.sh identifies solo projects"
+else
+  fail "authors.sh solo detection" "expected Solo project in assessment"
 fi
 
 # ── Summary ──

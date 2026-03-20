@@ -7,7 +7,7 @@ Shell scripts that analyze the health, churn, and evolution of any git repositor
 ```bash
 # Clone and run against any git repo
 ./health.sh              # Overall health grade (A-F) with recommendations
-./test_suite.sh          # Verify everything works (28 tests)
+./test_suite.sh          # Verify everything works (36 tests)
 ```
 
 ## Tools
@@ -20,6 +20,7 @@ Shell scripts that analyze the health, churn, and evolution of any git repositor
 | `coupling.sh [N]` | File pairs that always change together. May indicate hidden dependencies. |
 | `trend.sh` | Is churn increasing, decreasing, or stable over time? |
 | `intent.sh [N]` | Classifies *why* files are being rewritten: learning, refinement, or indecision. |
+| `authors.sh [N]` | Code ownership and knowledge distribution. Who owns what, and where are the bus factor risks? |
 | `evolve.sh` | Traces how a specific file changed over time (defaults to AGENTS.md). |
 
 `[N]` = optional number of recent commits to analyze (default: 50).
