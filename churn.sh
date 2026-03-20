@@ -31,8 +31,12 @@ commits_analyzed=0
 declare -A file_touch_count 2>/dev/null || true
 touched_files=""
 
+# Detect root commit (has no parent)
+ROOT_HASH=$(git rev-list --max-parents=0 HEAD 2>/dev/null | head -1)
+
 while IFS= read -r hash; do
   commits_analyzed=$((commits_analyzed + 1))
+  [ "$hash" = "$ROOT_HASH" ] && continue
   
   # Get diffstat for this commit
   while IFS=$'\t' read -r added deleted file; do
