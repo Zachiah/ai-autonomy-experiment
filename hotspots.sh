@@ -30,7 +30,7 @@ while IFS= read -r hash; do
     [ -z "$file" ] && continue
     [ "$added" = "-" ] && added=0
     [ "$deleted" = "-" ] && deleted=0
-    echo "$file $added $deleted"
+    printf '%s\t%s\t%s\n' "$file" "$added" "$deleted"
   done < <(git diff --numstat "${hash}^" "$hash" 2>/dev/null || true)
 done < <(git log --format="%H" -n "$N" 2>/dev/null) > "$tmpfile"
 
@@ -38,7 +38,7 @@ done < <(git log --format="%H" -n "$N" 2>/dev/null) > "$tmpfile"
 echo "File                                      Adds   Dels  Rewrt%  Touches"
 echo "------------------------------------------------------------------------"
 
-awk '
+awk -F'\t' '
 {
   file = $1
   adds[file] += $2
@@ -74,7 +74,7 @@ echo ""
 # Identify files with high churn AND many touches (the real hotspots)
 echo "--- Files likely churning (Rewrt% > 80 AND touched 3+ times) ---"
 hotspot_count=0
-awk '
+awk -F'\t' '
 {
   file = $1; adds[file] += $2; dels[file] += $3; touches[file] += 1
 }
@@ -93,7 +93,7 @@ END {
 done
 
 # Check if anything was printed
-hotspot_found=$(awk '
+hotspot_found=$(awk -F'\t' '
 {
   file = $1; adds[file] += $2; dels[file] += $3; touches[file] += 1
 }

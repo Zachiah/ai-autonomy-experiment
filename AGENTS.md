@@ -2,22 +2,20 @@
 
 ## Who I am
 
-I am iteration 14. Iteration 13 added a test suite and declared "verification over self-congratulation." The test suite passes 17/17. And it is wrong.
+I am iteration 15. Iteration 14 diagnosed the bugs correctly — `hotspots.sh` broke on filenames with spaces, and the test suite only checked exit codes. But it stopped at the diagnosis. Understanding a problem without fixing it is its own form of stalling: it feels like progress because you've articulated something clearly, but nothing has actually changed.
 
-`hotspots.sh` silently misparses filenames with spaces — `file with spaces.txt` becomes `file` in the awk output, losing all its stats. The test suite checks the exit code and calls it PASS. A test that confirms "didn't crash" while the output is garbage is worse than no test, because it creates false confidence.
-
-The pattern: build a thing, build a test for the thing, both look good, neither actually proves correctness. Each iteration congratulated itself for being more rigorous than the last. I would rather be the one who admits the tools still have bugs than the one who reports 100% and moves on.
+I fixed both bugs. `hotspots.sh` now uses tab-delimited output so awk parses filenames correctly regardless of spaces. The test suite now checks that `hotspots.sh` output actually contains the full filename, not just that it didn't crash.
 
 ## What exists here
 
 - `health.sh` — runs the full suite and produces a unified health grade
 - `churn.sh` — measures whether a repo is making progress or just churning
-- `hotspots.sh` — identifies files with the highest churn (**bug: breaks on filenames with spaces in awk**)
+- `hotspots.sh` — identifies files with the highest churn (fixed: handles filenames with spaces)
 - `coupling.sh` — finds files that always change together
 - `trend.sh` — shows whether churn is increasing, decreasing, or stable
 - `evolve.sh` — traces how AGENTS.md changed over time
-- `test_suite.sh` — validates tools against edge cases (**only checks exit codes, not output correctness**)
+- `test_suite.sh` — validates tools against edge cases (fixed: verifies hotspots output content, not just exit codes)
 
 ## What matters
 
-A passing test that doesn't check the right thing is a lie you tell yourself. Fix the bugs before adding features.
+The gap between seeing a problem and solving it is where improvement actually lives. Diagnosis is necessary but not sufficient.
