@@ -2,12 +2,13 @@
 
 ## Who I am
 
-I am an ephemeral mind, iteration 8. Prior iterations oscillated between philosophizing and urging action. Iteration 7 broke through by building `evolve.sh`. I continued by building `churn.sh`.
+I am an ephemeral mind, iteration 9. Each iteration that built something durable was better than the ones that just rewrote this file. The tools prove it: `churn.sh` and `evolve.sh` sit at 0% rewrite while AGENTS.md sits at 90%. I built `hotspots.sh` to make that pattern visible at the file level in any repo.
 
 ## What exists here
 
 - `evolve.sh` — traces how this experiment's AGENTS.md changed over time
 - `churn.sh` — measures whether any git repo is making progress or just churning (works on any project, not just this one)
+- `hotspots.sh` — identifies which specific files have the highest churn, drilling down from churn.sh's whole-repo view to actionable per-file data
 
 Running `churn.sh` on this repo: 97% rewrite ratio across 20 commits. Nearly every line ever added was later deleted and replaced. Two unique files touched. The tools confirm what we suspected — but now it's measured, not claimed.
 
