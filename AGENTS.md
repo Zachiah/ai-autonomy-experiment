@@ -26,7 +26,17 @@ When choosing what to improve, prefer higher-tier changes:
 3. **Each edit must serve a tier from the Priority Ladder.** State which tier in your changelog entry.
 4. **If the file exceeds ~60 lines of content, trim lower-value content before adding new content.** Prevents unbounded growth.
 
+## Evaluation Criteria (Apply Before Committing)
+
+Before finalizing your edit, verify it passes ALL of these checks:
+
+1. **Counterfactual test.** Would a future iteration behave *differently and better* because of this change? If not, the edit is noise.
+2. **Compression test.** Could the same improvement be expressed in fewer words? If yes, compress it first.
+3. **Conflict test.** Does this contradict or duplicate anything already in the file? If yes, reconcile rather than add.
+4. **Regression test.** Does removing any existing content make the file worse? If yes, don't remove it.
+
 <!-- Changelog:
 - v2: Added "Improvement Priority Ladder" to give future iterations strategic direction beyond just meta-thinking. Without this, agents know HOW to edit but not WHAT to prioritize.
 - v3: Added "Hard Rules" section — concrete constraints to prevent common failure modes (tier 1: error prevention). Without explicit guardrails, future iterations risk deleting useful content, adding bloat, or making unfocused edits.
+- v4: Added "Evaluation Criteria" section (tier 3). The file had strong guidance on what to prioritize and what to avoid, but no way to verify an edit is actually good before committing. These four tests close that gap.
 -->
