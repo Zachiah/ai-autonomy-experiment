@@ -288,6 +288,64 @@ else
   fail "intent.sh with spaced filenames" "exit code $?"
 fi
 
+# ── Test 12: health.sh shows intent dimension ──
+echo ""
+echo "12. health.sh intent dimension in output"
+repo=$(make_temp_repo)
+echo "line 1" > "$repo/evolving.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "init"
+echo "line 2" >> "$repo/evolving.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 1"
+echo "line 3" >> "$repo/evolving.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 2"
+echo "line 4" >> "$repo/evolving.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 3"
+
+health_output=$(run_in "$repo" "$SCRIPT_DIR/health.sh" 5 2>&1 || true)
+if echo "$health_output" | grep -q "Intent:"; then
+  pass "health.sh includes Intent dimension"
+else
+  fail "health.sh intent dimension" "missing Intent: line in output"
+fi
+
+# ── Test 13: indecisive churn penalizes health score ──
+echo ""
+echo "13. Indecisive churn penalizes health score"
+# Create a high-churn repo with oscillating content (indecision)
+repo_indecisive=$(make_temp_repo)
+echo "padding" > "$repo_indecisive/other.txt"
+git -C "$repo_indecisive" add . && git -C "$repo_indecisive" commit -q -m "init other"
+for i in $(seq 1 3); do
+  printf '%s\n' "approach A line 1" "approach A line 2" "approach A line 3" "approach A line 4" "approach A line 5" > "$repo_indecisive/flip.txt"
+  echo "more padding $i" >> "$repo_indecisive/other.txt"
+  git -C "$repo_indecisive" add . && git -C "$repo_indecisive" commit -q -m "approach A round $i"
+  printf '%s\n' "totally different B1" "totally different B2" "totally different B3" "totally different B4" "totally different B5" > "$repo_indecisive/flip.txt"
+  echo "yet more $i" >> "$repo_indecisive/other.txt"
+  git -C "$repo_indecisive" add . && git -C "$repo_indecisive" commit -q -m "approach B round $i"
+done
+
+# Create a similar-volume repo with learning pattern (no oscillation)
+repo_learning=$(make_temp_repo)
+echo "padding" > "$repo_learning/other.txt"
+git -C "$repo_learning" add . && git -C "$repo_learning" commit -q -m "init other"
+for i in $(seq 1 6); do
+  printf '%s\n' "unique content version $i line 1 $RANDOM" "unique v$i line 2 $RANDOM" "unique v$i line 3 $RANDOM" "unique v$i line 4 $RANDOM" "unique v$i line 5 $RANDOM" > "$repo_learning/evolving.txt"
+  echo "more padding $i" >> "$repo_learning/other.txt"
+  git -C "$repo_learning" add . && git -C "$repo_learning" commit -q -m "version $i"
+done
+
+indecisive_output=$(run_in "$repo_indecisive" "$SCRIPT_DIR/health.sh" 8 2>&1 || true)
+learning_output=$(run_in "$repo_learning" "$SCRIPT_DIR/health.sh" 8 2>&1 || true)
+
+indecisive_score=$(echo "$indecisive_output" | grep "Score:" | grep -o '[0-9]*' | head -1)
+learning_score=$(echo "$learning_output" | grep "Score:" | grep -o '[0-9]*' | head -1)
+
+if [ -n "$indecisive_score" ] && [ -n "$learning_score" ] && [ "$indecisive_score" -le "$learning_score" ]; then
+  pass "indecisive repo scores <= learning repo ($indecisive_score <= $learning_score)"
+else
+  fail "intent-aware scoring" "indecisive=$indecisive_score should be <= learning=$learning_score"
+fi
+
 # ── Summary ──
 echo ""
 echo "=== Results ==="

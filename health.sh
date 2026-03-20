@@ -10,6 +10,7 @@
 #   hotspots.sh — where is it concentrated?
 #   coupling.sh — what hidden dependencies exist?
 #   trend.sh    — is it getting better or worse?
+#   intent.sh   — is the churn productive or indecisive?
 #
 # This tool integrates them into a diagnosis. Individual tool output
 # is suppressed; only the synthesized findings are shown.
@@ -202,18 +203,127 @@ if [ "$half" -ge 2 ]; then
   trend_detail="${old_rr}% -> ${new_rr}% rewrite ratio"
 fi
 
+# ── 5. Intent analysis (classify churn quality) ──
+
+intent_learning=0
+intent_refinement=0
+intent_indecision=0
+intent_total=0
+
+# Run intent classification inline using the same approach as intent.sh
+# but only for hotspot files (touched 3+ times)
+intent_candidates=$(awk -F'\t' '{ count[$1]++ } END { for (f in count) if (count[f] >= 3) print f }' "$tmpfile" | sort)
+
+if [ -n "$intent_candidates" ]; then
+  intent_tmpdir=$(mktemp -d)
+  trap 'rm -f "$tmpfile"; rm -rf "$pair_tmpdir"; rm -rf "$intent_tmpdir"' EXIT
+
+  # Build a touch log with hashes for intent analysis
+  intent_touch_log="$intent_tmpdir/touches"
+  > "$intent_touch_log"
+  while IFS= read -r hash; do
+    [ "$hash" = "$ROOT_HASH" ] && continue
+    while IFS=$'\t' read -r added deleted file; do
+      [ -z "$file" ] && continue
+      echo "$file	$hash" >> "$intent_touch_log"
+    done < <(git diff --numstat "${hash}^" "$hash" 2>/dev/null || true)
+  done < <(git log --format="%H" -n "$N" 2>/dev/null)
+
+  # similarity function (line-level, 0-100)
+  _health_similarity() {
+    local a="$1" b="$2"
+    local total_a total_b shared
+    total_a=$(wc -l < "$a" | tr -d ' ')
+    total_b=$(wc -l < "$b" | tr -d ' ')
+    if [ "$total_a" -eq 0 ] && [ "$total_b" -eq 0 ]; then echo 100; return; fi
+    if [ "$total_a" -eq 0 ] || [ "$total_b" -eq 0 ]; then echo 0; return; fi
+    shared=$(comm -12 <(sort "$a") <(sort "$b") | wc -l | tr -d ' ')
+    local max=$total_a
+    [ "$total_b" -gt "$max" ] && max=$total_b
+    echo $((shared * 100 / max))
+  }
+
+  while IFS= read -r file; do
+    [ -z "$file" ] && continue
+    hash_file="$intent_tmpdir/hashes"
+    awk -F'\t' -v target="$file" '$1 == target { print $2 }' "$intent_touch_log" | tail -r > "$hash_file" 2>/dev/null \
+      || awk -F'\t' -v target="$file" '$1 == target { print $2 }' "$intent_touch_log" | tac > "$hash_file" 2>/dev/null \
+      || awk -F'\t' -v target="$file" '$1 == target { a[NR]=$2 } END { for(i=NR;i>=1;i--) print a[i] }' "$intent_touch_log" > "$hash_file"
+
+    touch_count=$(wc -l < "$hash_file" | tr -d ' ')
+    [ "$touch_count" -lt 3 ] && continue
+
+    version_files=()
+    valid_versions=0
+    while IFS= read -r h; do
+      vfile="$intent_tmpdir/v_${valid_versions}"
+      if git show "$h:$file" > "$vfile" 2>/dev/null; then
+        version_files+=("$vfile")
+        valid_versions=$((valid_versions + 1))
+      fi
+    done < "$hash_file"
+
+    [ "$valid_versions" -lt 3 ] && { rm -f "$intent_tmpdir"/v_*; continue; }
+
+    adj_sim_sum=0; adj_sim_count=0
+    for ((i = 0; i < valid_versions - 1; i++)); do
+      s=$(_health_similarity "${version_files[$i]}" "${version_files[$((i+1))]}")
+      adj_sim_sum=$((adj_sim_sum + s)); adj_sim_count=$((adj_sim_count + 1))
+    done
+
+    skip_sim_sum=0; skip_sim_count=0
+    for ((i = 0; i < valid_versions - 2; i++)); do
+      s=$(_health_similarity "${version_files[$i]}" "${version_files[$((i+2))]}")
+      skip_sim_sum=$((skip_sim_sum + s)); skip_sim_count=$((skip_sim_count + 1))
+    done
+
+    first_last_sim=$(_health_similarity "${version_files[0]}" "${version_files[$((valid_versions-1))]}")
+
+    [ "$adj_sim_count" -gt 0 ] && avg_adj=$((adj_sim_sum / adj_sim_count)) || avg_adj=0
+    [ "$skip_sim_count" -gt 0 ] && avg_skip=$((skip_sim_sum / skip_sim_count)) || avg_skip=0
+
+    oscillation_gap=$((avg_skip - avg_adj))
+
+    if [ "$oscillation_gap" -gt 10 ] || { [ "$first_last_sim" -gt 80 ] && [ "$avg_adj" -lt 60 ]; }; then
+      intent_indecision=$((intent_indecision + 1))
+    elif [ "$avg_adj" -ge 70 ]; then
+      intent_refinement=$((intent_refinement + 1))
+    else
+      intent_learning=$((intent_learning + 1))
+    fi
+    intent_total=$((intent_total + 1))
+
+    rm -f "$intent_tmpdir"/v_*
+  done <<< "$intent_candidates"
+fi
+
 # ── Scoring ──
 
 score=100
 
-# Rewrite ratio penalty (0-30 points)
+# Rewrite ratio penalty (0-30 points), adjusted by intent
+rewrite_penalty=0
 if [ "$rewrite_pct" -gt 90 ]; then
-  score=$((score - 30))
+  rewrite_penalty=30
 elif [ "$rewrite_pct" -gt 70 ]; then
-  score=$((score - 20))
+  rewrite_penalty=20
 elif [ "$rewrite_pct" -gt 50 ]; then
-  score=$((score - 10))
+  rewrite_penalty=10
 fi
+
+# Intent adjustment: if churn is mostly productive (learning/refinement),
+# reduce the rewrite penalty. If indecisive, increase it.
+if [ "$intent_total" -gt 0 ]; then
+  if [ "$intent_indecision" -eq 0 ]; then
+    # All churn is productive — halve the rewrite penalty
+    rewrite_penalty=$((rewrite_penalty / 2))
+  elif [ "$intent_indecision" -gt "$intent_learning" ] && [ "$intent_indecision" -gt "$intent_refinement" ]; then
+    # Mostly indecisive — add extra penalty (up to 10)
+    rewrite_penalty=$((rewrite_penalty + 10))
+    [ "$rewrite_penalty" -gt 40 ] && rewrite_penalty=40
+  fi
+fi
+score=$((score - rewrite_penalty))
 
 # Hotspot penalty (0-20 points)
 if [ "$hotspot_count" -gt 5 ]; then
@@ -298,6 +408,13 @@ if [ -n "${trend_detail:-}" ]; then
 fi
 echo ""
 
+if [ "$intent_total" -gt 0 ]; then
+  printf "  Intent:     %d learning, %d refinement, %d indecision (of %d classified)\n" \
+    "$intent_learning" "$intent_refinement" "$intent_indecision" "$intent_total"
+else
+  printf "  Intent:     no files with 3+ touches to classify\n"
+fi
+
 printf "  Breadth:    %d unique files, %d new files created\n" "$unique_files" "$new_files"
 
 echo ""
@@ -309,8 +426,22 @@ echo "Recommendations:"
 
 if [ "$rewrite_pct" -gt 70 ]; then
   rec_count=$((rec_count + 1))
-  echo "  $rec_count. High rewrite ratio suggests indecision or thrashing. Consider"
-  echo "     stabilizing interfaces before iterating on implementation."
+  if [ "$intent_indecision" -gt 0 ]; then
+    echo "  $rec_count. High rewrite ratio with indecisive churn detected. Consider"
+    echo "     committing to a direction before iterating further."
+  elif [ "$intent_learning" -gt 0 ] && [ "$intent_indecision" -eq 0 ]; then
+    echo "  $rec_count. High rewrite ratio, but churn appears productive (learning)."
+    echo "     The exploration is healthy — consider when to converge."
+  else
+    echo "  $rec_count. High rewrite ratio detected. Run ./intent.sh to check whether"
+    echo "     the churn is productive or indecisive."
+  fi
+fi
+
+if [ "$intent_indecision" -gt 0 ]; then
+  rec_count=$((rec_count + 1))
+  echo "  $rec_count. $intent_indecision file(s) showing indecisive churn (oscillating rewrites)."
+  echo "     Run ./intent.sh for details on which files are affected."
 fi
 
 if [ "$hotspot_count" -gt 0 ]; then
@@ -347,5 +478,6 @@ echo "  ./churn.sh $N      — full churn breakdown"
 echo "  ./hotspots.sh $N   — per-file rewrite rates"
 echo "  ./coupling.sh $N   — temporal coupling between files"
 echo "  ./trend.sh          — churn trajectory over time"
+echo "  ./intent.sh $N     — classify why files are being rewritten"
 echo ""
 echo "=== End of report ==="
