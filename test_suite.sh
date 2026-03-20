@@ -3,7 +3,7 @@
 #
 # Creates synthetic git repos and verifies the tools produce correct output.
 # Covers: non-repo dirs, single-commit repos, binary files, filenames with
-# spaces, scoring sanity, and minimum-commit guards.
+# spaces, scoring sanity, minimum-commit guards, and pace analysis.
 
 set -euo pipefail
 
@@ -434,6 +434,115 @@ if echo "$authors_output" | grep -q "Solo project"; then
   pass "authors.sh identifies solo projects"
 else
   fail "authors.sh solo detection" "expected Solo project in assessment"
+fi
+
+# ── Test 18: pace.sh non-git directory ──
+echo ""
+echo "18. pace.sh non-git directory handling"
+if run_in "$tmpdir" "$SCRIPT_DIR/pace.sh" >/dev/null 2>&1; then
+  fail "pace.sh on non-git dir" "should exit non-zero"
+else
+  pass "pace.sh rejects non-git directory"
+fi
+
+# ── Test 19: pace.sh basic output ──
+echo ""
+echo "19. pace.sh basic output"
+repo=$(make_temp_repo)
+echo "init" > "$repo/code.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "init"
+echo "edit1" >> "$repo/code.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 1"
+echo "edit2" >> "$repo/code.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 2"
+echo "edit3" >> "$repo/code.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 3"
+
+pace_output=$(run_in "$repo" "$SCRIPT_DIR/pace.sh" 5 2>&1 || true)
+if echo "$pace_output" | grep -q "Pace Report"; then
+  pass "pace.sh produces pace report"
+else
+  fail "pace.sh output" "missing Pace Report header"
+fi
+if echo "$pace_output" | grep -q "Commit Size Distribution"; then
+  pass "pace.sh shows commit size distribution"
+else
+  fail "pace.sh output" "missing Commit Size Distribution section"
+fi
+if echo "$pace_output" | grep -q "Delivery Rhythm"; then
+  pass "pace.sh shows delivery rhythm"
+else
+  fail "pace.sh output" "missing Delivery Rhythm section"
+fi
+
+# ── Test 20: pace.sh single commit ──
+echo ""
+echo "20. pace.sh single-commit repo"
+repo=$(make_temp_repo)
+echo "hello" > "$repo/file.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "first"
+
+pace_output=$(run_in "$repo" "$SCRIPT_DIR/pace.sh" 1 2>&1 || true)
+if echo "$pace_output" | grep -q "Pace Report"; then
+  pass "pace.sh runs on single-commit repo"
+else
+  fail "pace.sh single commit" "unexpected output"
+fi
+# Single commit should not show rhythm section
+if echo "$pace_output" | grep -q "Delivery Rhythm"; then
+  fail "pace.sh single commit" "should not show rhythm with only 1 commit"
+else
+  pass "pace.sh omits rhythm section for single commit"
+fi
+
+# ── Test 21: pace.sh with filenames with spaces ──
+echo ""
+echo "21. pace.sh with filenames with spaces"
+repo=$(make_temp_repo)
+echo "a" > "$repo/my file.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "init"
+echo "b" >> "$repo/my file.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 1"
+echo "c" >> "$repo/my file.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit 2"
+
+if run_in "$repo" "$SCRIPT_DIR/pace.sh" 5 >/dev/null 2>&1; then
+  pass "pace.sh handles filenames with spaces"
+else
+  fail "pace.sh with spaced filenames" "exit code $?"
+fi
+
+# ── Test 22: pace.sh with binary files ──
+echo ""
+echo "22. pace.sh with binary files"
+repo=$(make_temp_repo)
+echo "text" > "$repo/readme.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "first"
+dd if=/dev/urandom of="$repo/image.bin" bs=64 count=1 2>/dev/null
+git -C "$repo" add . && git -C "$repo" commit -q -m "add binary"
+echo "more" >> "$repo/readme.txt"
+git -C "$repo" add . && git -C "$repo" commit -q -m "edit text"
+
+if run_in "$repo" "$SCRIPT_DIR/pace.sh" 5 >/dev/null 2>&1; then
+  pass "pace.sh handles binary files"
+else
+  fail "pace.sh with binary files" "exit code $?"
+fi
+
+# ── Test 23: pace.sh assessment output ──
+echo ""
+echo "23. pace.sh pace assessment"
+repo=$(make_temp_repo)
+for i in $(seq 1 6); do
+  echo "line $i" >> "$repo/growing.txt"
+  git -C "$repo" add . && git -C "$repo" commit -q -m "add line $i"
+done
+
+pace_output=$(run_in "$repo" "$SCRIPT_DIR/pace.sh" 6 2>&1 || true)
+if echo "$pace_output" | grep -q "Rhythm:"; then
+  pass "pace.sh provides rhythm assessment"
+else
+  fail "pace.sh assessment" "missing Rhythm classification"
 fi
 
 # ── Summary ──
